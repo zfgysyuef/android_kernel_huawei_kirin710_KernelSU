@@ -1,0 +1,38 @@
+name: Makefile CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install repo tool
+      run: |
+       curl https://storage.googleapis.com/git-repo-downloads/repo > ~/repo
+       chmod a+x ~/repo
+       sudo mv ~/repo /usr/local/bin/repo
+
+    - name: configure
+      run: |
+       curl -LSs "https://raw.githubusercontent.com/ShirkNeko/KernelSU/main/kernel/setup.sh" | bash ${{ env.BRANCH }}
+       cd ./KernelSU
+       KSU_VERSION=$(expr $(/usr/bin/git rev-list --count main) "+" 10606)
+       echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
+       export KSU_VERSION=$KSU_VERSION
+       sed -i "s/DKSU_VERSION=16/DKSU_VERSION=${KSU_VERSION}/" kernel/Makefile
+
+    - name: Install dependencies
+      run: make
+
+    - name: Run check
+      run: make check
+
+    - name: Run distcheck
+      run: make distcheck
